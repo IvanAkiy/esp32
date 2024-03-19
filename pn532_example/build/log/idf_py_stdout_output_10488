@@ -1,0 +1,5 @@
+[1/4] cmd.exe /C "cd /D D:\Global\pn532_example\build\esp-idf\esptool_py && C:\Users\romanchekk\.espressif\python_env\idf5.2_py3.11_env\Scripts\python.exe C:/Users/romanchekk/esp/v5.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app D:/Global/pn532_example/build/partition_table/partition-table.bin D:/Global/pn532_example/build/pb532.bin"
+pb532.bin binary size 0x3b560 bytes. Smallest app partition is 0x100000 bytes. 0xc4aa0 bytes (77%) free.
+[2/4] Performing build step for 'bootloader'
+[1/1] cmd.exe /C "cd /D D:\Global\pn532_example\build\bootloader\esp-idf\esptool_py && C:\Users\romanchekk\.espressif\python_env\idf5.2_py3.11_env\Scripts\python.exe C:/Users/romanchekk/esp/v5.2/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 D:/Global/pn532_example/build/bootloader/bootloader.bin"
+Bootloader binary size 0x5250 bytes. 0x2db0 bytes (36%) free.

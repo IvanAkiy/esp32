@@ -1,0 +1,68 @@
+[0;33m--- WARNING: GDB cannot open serial ports accessed as COMx[0m
+[0;33m--- Using \\.\COM6 instead...[0m
+[0;33m--- esp-idf-monitor 1.4.0 on \\.\COM6 115200 ---[0m
+[0;33m--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H ---[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0;33m0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x403759be: panic_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/panic.c:472
+0x4037ad19: esp_system_abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/esp_system_chip.c:93
+0x40381395: abort at C:/Users/romanchekk/esp/v5.2/esp-idf/components/newlib/abort.c:38
+0x4037b7df: vPortTaskWrapper at C:/Users/romanchekk/esp/v5.2/esp-idf/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c:138
+[0m
+[0;33m0x40375934: esp_restart_noos at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/soc/esp32s3/system_internal.c:159
+[0m
+[0m
