@@ -6,7 +6,8 @@
 #include <freertos/timers.h>
 #include <esp_event.h>
 #include <esp_log.h>
-#include <driver/i2c.h>
+
+#define pdSECOND pdMS_TO_TICKS(1000)
 
 class Main final
 {
