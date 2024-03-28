@@ -1,9 +1,6 @@
 #include "pn532.h"
 
-namespace
-{
-    const char LTAG[] = "PN_532";
-}
+static const char LTAG[] = "PN_532";
 
 static esp_err_t i2c_master_init(void)
 {
