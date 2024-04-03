@@ -8,7 +8,7 @@ const char *pass = "rpi-qr-rfid";
 static esp_mqtt_client_handle_t client;
 
 void mqtt_publish_message(const char *topic, const char *message) {
-    esp_mqtt_client_publish(client, topic, message, 0, 1, 0);
+    esp_mqtt_client_publish(client, topic, message, 36, 1, 0);
 }
 
 static void log_error_if_nonzero(const char *message, int error_code)
@@ -125,7 +125,7 @@ void mqtt_initialize(void) {
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker = {
             .address = {
-                .uri = "mqtt://172.24.193.28", // TODO: write for hostname
+                .uri = "mqtt://192.168.4.1", // TODO: write for hostname
             },
             .verification = {
                 .skip_cert_common_name_check = true, // Set to true if you want to skip CN check
@@ -153,5 +153,6 @@ void mqtt_initialize(void) {
     esp_mqtt_client_start(client);
 
     // Publish a start message
-    mqtt_publish_message("topic", "Start Message!");
+    // mqtt_publish_message("topic", "Start Message!");
+    esp_mqtt_client_publish(client, "topic", "Start Message!", 0, 1, 0);
 }

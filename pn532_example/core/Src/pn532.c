@@ -97,7 +97,7 @@ void pn532_example(void*) {
     }
     
     while (1) {
-        uint8_t uid[23];
+        uint8_t uid[22];
         response = i2c_master_read_from_device(I2C_MASTER_NUM,
                     PN532_I2C_ADDRESS,
                     uid,
@@ -125,13 +125,17 @@ void pn532_example(void*) {
             if (jewel_tag_present) {
                 ESP_LOGI(LTAG, "Jewel Tag Detected!");
 
-                char uid_string[13];
+                char uid_string[10];
                 uid_string[0] = '\0';
                 printf("Received UID: ");
                 for (int i = 10; i < sizeof(uid); i++) {
                     printf("%02X ", uid[i]);
                     sprintf(uid_string + strlen(uid_string), "%02X ", uid[i]);
                 }
+                // printf("UID to be sent:");
+                // for (int i = 10; i < sizeof(uid); i++) {
+                //     printf("%02X ", uid_string[i]);
+                // }
                 printf("\n");
                 mqtt_publish_message("topic", uid_string);
 
