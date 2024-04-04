@@ -2,6 +2,7 @@
 #define PN532_H
 
 #include <mqtt_pn.h>
+#include "uart.h"
 #include <freertos/timers.h>
 #include <driver/i2c.h>
 

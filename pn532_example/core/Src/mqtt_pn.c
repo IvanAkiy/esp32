@@ -8,7 +8,7 @@ const char *pass = "rpi-qr-rfid";
 static esp_mqtt_client_handle_t client;
 
 void mqtt_publish_message(const char *topic, const char *message) {
-    esp_mqtt_client_publish(client, topic, message, 36, 1, 0);
+    esp_mqtt_client_publish(client, topic, message, 0, 1, 0);
 }
 
 static void log_error_if_nonzero(const char *message, int error_code)

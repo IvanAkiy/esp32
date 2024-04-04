@@ -1,9 +1,11 @@
 #include <pn532.h>
 
+
 static const char MAIN_TAG[] = "Main";
 
 void app_main(void)
 {
+    init();
     ESP_LOGI(MAIN_TAG, "Setup!");
     nvs_flash_init(); 
     
