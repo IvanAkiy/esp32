@@ -28,9 +28,8 @@ static const char *TAG = "Camera:";
 
 #define BUF_SIZE (128)
 
-// const char * special_message = '1';
 int sended = 0;
-
+uint8_t payload[8896];
 #define IMG_WIDTH 320
 #define IMG_HEIGHT 240
 
@@ -51,8 +50,6 @@ int sended = 0;
 #define CAM_PIN_VSYNC 25
 #define CAM_PIN_HREF 23
 #define CAM_PIN_PCLK 22
-
-#define FLASH_LED_PIN GPIO_NUM_33
 
 
 static camera_config_t camera_config = {
@@ -95,13 +92,15 @@ static void processing_task(void *arg);
 static void main_task(void *arg);
 static esp_err_t init_camera();
 
+
 int sendData(const char* logName, const char* data)
 {
     const int len = strlen(data);
-    const int txBytes = uart_write_bytes(UART_NUM_0, data, len);
+    const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
     ESP_LOGI(logName, "Wrote %d bytes", txBytes);
     return txBytes;
 }
+
 
 void tx_task(const char* data)
 {
@@ -176,9 +175,10 @@ static void main_task(void *arg)
         uint8_t *data = (uint8_t *) malloc(BUF_SIZE); 
         int len = uart_read_bytes(ECHO_UART_PORT_NUM, data,  (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
         if (len > 0) {
-        // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) data, len); 
-        //     tx_task();
-            // gpio_set_level(FLASH_LED_PIN, 1);
+        // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) data, len);
+        // tx_task((const char*)data);
+        // //     tx_task();
+        //     // gpio_set_level(FLASH_LED_PIN, 1);
 
             // The processing task will be running QR code detection and recognition
             xTaskCreatePinnedToCore(&processing_task, "processing", 35000, processing_queue, 1, NULL, 0);
@@ -203,6 +203,8 @@ static void main_task(void *arg)
                     break;
                 }
             }
+        // strcpy(payload, "Initial payload");
+        uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) data, len);
         }
     }
 }
@@ -249,7 +251,7 @@ static void processing_task(void *arg)
             ESP_LOGI(TAG, "QR count: %d   Heap: %d  Stack free: %d  time: %d ms",
                      count, heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
                      uxTaskGetStackHighWaterMark(NULL), time_find_ms);
-
+            
             // If a QR code was detected, try to decode it:
             for (int i = 0; i < count; i++) {
                 struct quirc_code code = {};
@@ -267,13 +269,19 @@ static void processing_task(void *arg)
                 } else {
                         ESP_LOGI(TAG, "QR Data: %s bytes: '%d'", qr_data.payload, qr_data.payload_len);
                         // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) qr_data.payload, qr_data.payload_len);
-                        tx_task((const char *) qr_data.payload);
+                        // tx_task((const char *) qr_data.payload);
+                        // payload = &qr_data.payload;
+                        
+                        memcpy(payload, qr_data.payload, qr_data.payload_len);
+
                         sended = 1;
                     }
                 }
                 if(sended == 1) {
                     break;
                 }
+                
+            // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *)'0', strlen('0'));
         // }
     }
 }
