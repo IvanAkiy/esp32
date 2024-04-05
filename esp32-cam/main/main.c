@@ -24,14 +24,14 @@ static const char *TAG = "Camera:";
 
 #define ECHO_UART_PORT_NUM      UART_NUM_0
 #define ECHO_UART_BAUD_RATE     115200
-#define ECHO_TASK_STACK_SIZE    2048
+
 
 #define BUF_SIZE (128)
 
 int sended = 0;
-uint8_t payload[8896];
-#define IMG_WIDTH 320
-#define IMG_HEIGHT 240
+
+#define IMG_WIDTH 400
+#define IMG_HEIGHT 296
 
 #define CAM_PIN_PWDN 32
 #define CAM_PIN_RESET -1
@@ -71,19 +71,19 @@ static camera_config_t camera_config = {
     .pin_href = CAM_PIN_HREF,
     .pin_pclk = CAM_PIN_PCLK,
 
-    .xclk_freq_hz = 20000000, //XCLK 20MHz or 10MHz for OV2640 double FPS (Experimental)
+    .xclk_freq_hz = 10000000, //XCLK 20MHz or 10MHz for OV2640 double FPS (Experimental)
     .ledc_timer = LEDC_TIMER_0,
     .ledc_channel = LEDC_CHANNEL_0,
 
     .pixel_format = PIXFORMAT_RGB565, //YUV422,GRAYSCALE,RGB565,JPEG
-    .frame_size = FRAMESIZE_QVGA,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
+    .frame_size = FRAMESIZE_CIF,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
-    .jpeg_quality = 12, //0-63 lower number means higher quality
+    .jpeg_quality = 5, //0-63 lower number means higher quality
     .fb_count = 2       //if more than one, i2s runs in continuous mode. Use only with JPEG
 
 };
 
-TaskHandle_t main_task_handle;
+TaskHandle_t processing_task_handle;
 
 
 static uint8_t rgb565_to_grayscale(const uint8_t *img);
@@ -93,54 +93,13 @@ static void main_task(void *arg);
 static esp_err_t init_camera();
 
 
-int sendData(const char* logName, const char* data)
-{
-    const int len = strlen(data);
-    const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-    ESP_LOGI(logName, "Wrote %d bytes", txBytes);
-    return txBytes;
-}
-
-
-void tx_task(const char* data)
-{
-    static const char *TX_TASK_TAG = "TX_TASK";
-    esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
-    sendData(TX_TASK_TAG, data);
-}
-
-void suspend_resume_task(void *pvParameters) {
-   vTaskDelay(pdMS_TO_TICKS(5000)); // Suspend the main_task after 5 seconds
-    vTaskSuspend(main_task_handle); // Suspend the main_task
-    printf("Main task suspended...\n");
-    vTaskDelay(pdMS_TO_TICKS(5000)); // Resume the main_task after another 5 seconds
-    vTaskResume(main_task_handle); // Resume the main_task
-    printf("Main task resumed...\n");
-    vTaskDelete(NULL); // Delete this task
-}
-
-
 void app_main(void)
 {
-//     gpio_num_t gpio_pin = GPIO_NUM_2; // Replace with your desired pin number
-
-// gpio_config_t io_conf;
-// io_conf.intr_type = GPIO_INTR_DISABLE; // Disable interrupt
-// io_conf.pin_sel = gpio_pin;
-// io_conf.mode = GPIO_MODE_OUTPUT; // Set as output mode
-// io_conf.pull_up_en = GPIO_PULLUP_DISABLE; // Disable pull-up resistor
-// io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE; // Disable pull-down resistor
-// gpio_config(&io_conf);
-
-
     xTaskCreatePinnedToCore(&main_task, "main", 4096, NULL, 5, NULL, 0);
-    // xTaskCreatePinnedToCore(&suspend_resume_task, "suspend_resume", 4096, NULL, 4, NULL, 1);
 }
 
 static void main_task(void *arg)
 {
-    //Creating the queue for rx message processing
-    // QueueHandle_t message_queue = xQueueCreate(1, sizeof(uint8_t[BUF_SIZE]));
     //Initializing the uart communication
     uart_config_t uart_config = {
         .baud_rate = ECHO_UART_BAUD_RATE,
@@ -169,19 +128,15 @@ static void main_task(void *arg)
     assert(processing_queue);
     camera_fb_t *pic;
 
-    //The main loop waiting for rx messages, and decoding qr code
+    // The main loop waiting for rx messages, and decoding qr code
     while(1){
-        //checking for the message from rx
+        // checking for the message from rx
         uint8_t *data = (uint8_t *) malloc(BUF_SIZE); 
         int len = uart_read_bytes(ECHO_UART_PORT_NUM, data,  (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
         if (len > 0) {
-        // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) data, len);
-        // tx_task((const char*)data);
-        // //     tx_task();
-        //     // gpio_set_level(FLASH_LED_PIN, 1);
-
+            // uart_flush(ECHO_UART_PORT_NUM);
             // The processing task will be running QR code detection and recognition
-            xTaskCreatePinnedToCore(&processing_task, "processing", 35000, processing_queue, 1, NULL, 0);
+            xTaskCreatePinnedToCore(&processing_task, "processing", 35000, processing_queue, 1, &processing_task_handle, 0);
             ESP_LOGI(TAG, "Processing task started");
 
             // loop to get frames from the camera
@@ -199,12 +154,9 @@ static void main_task(void *arg)
                 }
                 if(sended == 1) {
                     sended = 0;
-                    // gpio_set_level(FLASH_LED_PIN, 0);
                     break;
                 }
             }
-        // strcpy(payload, "Initial payload");
-        uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) data, len);
         }
     }
 }
@@ -223,9 +175,7 @@ static void processing_task(void *arg)
         return;
     }
     QueueHandle_t input_queue = (QueueHandle_t) arg;
-    // QueueHandle_t message_queue = (QueueHandle_t)arg;
 
-    // uint8_t data[BUF_SIZE];
     ESP_LOGI(TAG, "Processing task ready");
     while (true) {
         // if (xQueueReceive(message_queue, data, portMAX_DELAY) == pdPASS) {
@@ -268,21 +218,13 @@ static void processing_task(void *arg)
                     ESP_LOGE(TAG, "QR err: %d", err);
                 } else {
                         ESP_LOGI(TAG, "QR Data: %s bytes: '%d'", qr_data.payload, qr_data.payload_len);
-                        // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *) qr_data.payload, qr_data.payload_len);
-                        // tx_task((const char *) qr_data.payload);
-                        // payload = &qr_data.payload;
-                        
-                        memcpy(payload, qr_data.payload, qr_data.payload_len);
-
+                        int some = uart_write_bytes(ECHO_UART_PORT_NUM, (const char *)qr_data.payload, qr_data.payload_len);
                         sended = 1;
                     }
                 }
                 if(sended == 1) {
-                    break;
+                    vTaskDelete(processing_task_handle);
                 }
-                
-            // uart_write_bytes(ECHO_UART_PORT_NUM, (const char *)'0', strlen('0'));
-        // }
     }
 }
 
