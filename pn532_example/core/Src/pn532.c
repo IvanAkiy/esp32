@@ -95,7 +95,7 @@ void pn532_example(void*) {
         ESP_LOGE(LTAG, "Error sending In List Passive Target command: %s", esp_err_to_name(response));
         return;
     }
-    
+
     while (1) {
         uint8_t uid[22];
         response = i2c_master_read_from_device(I2C_MASTER_NUM,
@@ -109,17 +109,19 @@ void pn532_example(void*) {
             uint8_t jewel_tag_released[] = {0x01, 0x00, 0x00, 0xFF, 0x0F, 0xF1, 0xD5, 0x4B, 0x00};
             bool jewel_tag_present = true, jewel_tag_not_present = true;
 
-            for (int i = 0; i < 8; i++) {
+            for (int i = 7; i < 9; i++) {
                 if (uid[i] != jewel_tag_detected[i]) {
                     jewel_tag_present = false;
-                }
-                else if (uid[i] == jewel_tag_released[i]) {
-                    jewel_tag_not_present = false;
-                }
-
-                if(!jewel_tag_present && !jewel_tag_not_present) {
                     break;
                 }
+            }
+
+            for (int i = 7; i < 9; i++) {
+                if (uid[i] == jewel_tag_released[i])
+                {
+                    jewel_tag_not_present = false;
+                    break;
+                }   
             }
             
             if (jewel_tag_present) {
@@ -146,9 +148,8 @@ void pn532_example(void*) {
 
                 response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND*10);
             }
-            else if (jewel_tag_not_present) {
+            else if (!jewel_tag_not_present) {
                 ESP_LOGI(LTAG, "Jewel Tag Released!");
-
                 response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND*10);
             }
             
