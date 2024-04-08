@@ -44,45 +44,15 @@ void tx_task()
 }
 
 
-
-// char* rx_task()
-// {
-//     static const char *RX_TASK_TAG = "RX_TASK";
-//     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-//     uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE);
-    
-//     // if (data == NULL) {
-//     //     ESP_LOGE(RX_TASK_TAG, "Failed to allocate memory for data buffer");
-//     //     return NULL; // Return NULL to indicate failure
-//     // }
-    
-//     // // memset(data, 0, RX_BUF_SIZE); // Ensure buffer is null-terminated
-    
-//     int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE - 1, 1000 / portTICK_PERIOD_MS);
-//     if (rxBytes > 0) {
-//         data[rxBytes] = '\0'; // Null-terminate the received data
-//         ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
-//         ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
-//     } else {
-//         free(data);
-//         return NULL; // Return NULL if no data is received
-//     }
-    
-//     return (char*)data;
-// }
-
-
 char* rx_task()
 {
     static const char *RX_TASK_TAG = "RX_TASK";
     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
     uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE+1);
     while (1) {
-        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 3000 / portTICK_PERIOD_MS);
+        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 700 / portTICK_PERIOD_MS);
         if (rxBytes > 0) {
-            data[rxBytes] = 0;
-            // ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
-            // ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
+            data[rxBytes] = '\0';
             return (char*)data;
         }else{
             return NULL;
