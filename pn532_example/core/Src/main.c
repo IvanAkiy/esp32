@@ -1,11 +1,9 @@
 #include <pn532.h>
 
-
 static const char MAIN_TAG[] = "Main";
 
 void app_main(void)
 {
-    init();
     ESP_LOGI(MAIN_TAG, "Setup!");
     nvs_flash_init(); 
     
@@ -14,6 +12,9 @@ void app_main(void)
     
     mqtt_initialize();
     ESP_LOGI(MAIN_TAG, "Setup completed!");
+
+    init();
+    ESP_LOGI(MAIN_TAG, "UART Initialized!");
 
     xTaskCreate(pn532_example, "pn532_example", 4096, NULL, 5, NULL);
 }

@@ -2,18 +2,30 @@
 
 const char MQTT_TAG[] = "MQTT";
 
-int retry_num = 0;
 const char *ssid = "rpi-qr-rfid";
 const char *pass = "rpi-qr-rfid";
+int retry_num = 0;
+
 static esp_mqtt_client_handle_t client;
 
-void mqtt_publish_message(const char *topic, const char *message) {
-    esp_mqtt_client_publish(client, topic, message, 0, 1, 0);
+void mqtt_publish_message(const char *topic, const char *message)
+{
+    int result = esp_mqtt_client_publish(client, topic, message, 0, 1, 0);
+
+    if (result < 0)
+    {
+        ESP_LOGE(MQTT_TAG, "Error occured on sending message via MQTT!");
+    }
+    else
+    {
+        ESP_LOGI(MQTT_TAG, "Message sent successfully!");
+    }
 }
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
-    if (error_code != 0) {
+    if (error_code != 0)
+    {
         ESP_LOGE(MQTT_TAG, "Last error %s: 0x%x", message, error_code);
     }
 }
@@ -24,10 +36,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
-    switch ((esp_mqtt_event_id_t)event_id) {
+    switch ((esp_mqtt_event_id_t)event_id)
+    {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(MQTT_TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "topic", "Hello MQTT!", 0, 1, 0);
+        msg_id = esp_mqtt_client_publish(client, "topic", "MQTT Initalized!", 0, 1, 0);
         ESP_LOGI(MQTT_TAG, "Sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -43,7 +56,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(MQTT_TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(MQTT_TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);   
+        ESP_LOGI(MQTT_TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(MQTT_TAG, "MQTT_EVENT_DATA");
@@ -52,12 +65,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(MQTT_TAG, "MQTT_EVENT_ERROR");
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
+        {
             log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
             log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
-            log_error_if_nonzero("captured as transport's socket errno",  event->error_handle->esp_transport_sock_errno);
+            log_error_if_nonzero("captured as transport's socket errno", event->error_handle->esp_transport_sock_errno);
             ESP_LOGI(MQTT_TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
-
         }
         break;
     default:
@@ -66,76 +79,79 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id,void *event_data){
-    if(event_id == WIFI_EVENT_STA_START)
+static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    if (event_id == WIFI_EVENT_STA_START)
     {
-    ESP_LOGI(MQTT_TAG, "WiFi CONNECTING....");
+        ESP_LOGI(MQTT_TAG, "WiFi CONNECTING....");
     }
     else if (event_id == WIFI_EVENT_STA_CONNECTED)
     {
-    ESP_LOGI(MQTT_TAG,"WiFi CONNECTED\n");
+        ESP_LOGI(MQTT_TAG, "WiFi CONNECTED\n");
     }
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-    ESP_LOGI(MQTT_TAG,"WiFi lost connection\n");
-    if(retry_num<5){
-        esp_wifi_connect();retry_num++;
-        printf("Retrying to Connect...\n");}
+        ESP_LOGI(MQTT_TAG, "WiFi lost connection\n");
+        if (retry_num < 5)
+        {
+            esp_wifi_connect();
+            retry_num++;
+            printf("Retrying to Connect...\n");
+        }
     }
     else if (event_id == IP_EVENT_STA_GOT_IP)
     {
-    ESP_LOGI(MQTT_TAG,"Wifi got IP...\n\n");
+        ESP_LOGI(MQTT_TAG, "Wifi got IP...\n\n");
     }
 }
-
 
 void wifi_connection()
 {
     // 2 - Wi-Fi Configuration Phase
     esp_netif_init();
-    esp_event_loop_create_default();     // event loop                    s1.2
-    esp_netif_create_default_wifi_sta(); // WiFi station                      s1.3
+    esp_event_loop_create_default();
+    esp_netif_create_default_wifi_sta();
     wifi_init_config_t wifi_initiation = WIFI_INIT_CONFIG_DEFAULT();
-    esp_wifi_init(&wifi_initiation); //     
+    esp_wifi_init(&wifi_initiation);
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
     wifi_config_t wifi_configuration = {
         .sta = {
             .ssid = "",
             .password = "",
-            
-           }
-    
-        };
-    strcpy((char*)wifi_configuration.sta.ssid, ssid);
-    strcpy((char*)wifi_configuration.sta.password, pass);    
-    //esp_log_write(ESP_LOG_INFO, "Kconfig", "SSID=%s, PASS=%s", ssid, pass);
+
+        }
+
+    };
+    strcpy((char *)wifi_configuration.sta.ssid, ssid);
+    strcpy((char *)wifi_configuration.sta.password, pass);
+    // esp_log_write(ESP_LOG_INFO, "Kconfig", "SSID=%s, PASS=%s", ssid, pass);
     esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_configuration);
     // 3 - Wi-Fi Start Phase
     esp_wifi_start();
     esp_wifi_set_mode(WIFI_MODE_STA);
     // 4- Wi-Fi Connect Phase
     esp_wifi_connect();
-    ESP_LOGI(MQTT_TAG, "wifi_init_softap finished. SSID:%s  password:%s",ssid,pass);
-    
+    ESP_LOGI(MQTT_TAG, "wifi_init_softap finished. SSID:%s  password:%s", ssid, pass);
 }
 
-void mqtt_initialize(void) {
-    // Set up MQTT broker address and security verification
+void mqtt_initialize(void)
+{
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker = {
             .address = {
-                .uri = "mqtt://192.168.4.1", // TODO: write for hostname
+                .uri = "mqtt://192.168.4.1",
             },
             .verification = {
                 .skip_cert_common_name_check = true, // Set to true if you want to skip CN check
             },
         },
+        // TODO
         .session = {
-            .keepalive = 60, // Specify the keep-alive time in seconds
+            .keepalive = 80, // Specify the keep-alive time in seconds
         },
         .network = {
-            .reconnect_timeout_ms = 5000, // Specify the reconnect timeout in milliseconds
+            .reconnect_timeout_ms = 3000, // Specify the reconnect timeout in milliseconds
             .timeout_ms = 10000,          // Specify the network operation timeout in milliseconds
         },
         .task = {
@@ -143,7 +159,7 @@ void mqtt_initialize(void) {
             .stack_size = 8192 // Specify the MQTT task stack size
         },
         .buffer = {
-            .size = 1024,  // Specify the MQTT send/receive buffer size
+            .size = 1024,    // Specify the MQTT send/receive buffer size
             .out_size = 1024 // Specify the MQTT output buffer size (if needed)
         },
     };
@@ -151,8 +167,4 @@ void mqtt_initialize(void) {
     client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
     esp_mqtt_client_start(client);
-
-    // Publish a start message
-    // mqtt_publish_message("topic", "Start Message!");
-    esp_mqtt_client_publish(client, "topic", "Start Message!", 0, 1, 0);
 }

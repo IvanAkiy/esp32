@@ -1,19 +1,9 @@
 #include "uart.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_system.h"
-#include "esp_log.h"
-#include "driver/uart.h"
-#include "string.h"
-#include "driver/gpio.h"
-
 const int RX_BUF_SIZE = 1024;
 
-#define TXD_PIN (GPIO_NUM_11)
-#define RXD_PIN (GPIO_NUM_12)
-
-void init(void) {
+void init(void)
+{
     const uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
@@ -28,7 +18,7 @@ void init(void) {
     uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
 
-int sendData(const char* logName, const char* data)
+int sendData(const char *logName, const char *data)
 {
     const int len = strlen(data);
     const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
@@ -43,21 +33,23 @@ void tx_task()
     sendData(TX_TASK_TAG, "1");
 }
 
-
-char* rx_task()
+char *rx_task()
 {
     static const char *RX_TASK_TAG = "RX_TASK";
     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-    uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE+1);
-    while (1) {
-        const int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 700 / portTICK_PERIOD_MS);
-        if (rxBytes > 0) {
+    uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
+    while (1)
+    {
+        int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 350 / portTICK_PERIOD_MS);
+        uart_flush(UART_NUM_1);
+        if (rxBytes > 0)
+        {
             data[rxBytes] = '\0';
-            return (char*)data;
-        }else{
+            return (char *)data;
+        }
+        else
+        {
             return NULL;
         }
     }
-    free(data);
-
 }
