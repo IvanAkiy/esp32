@@ -2,7 +2,7 @@
 
 const int RX_BUF_SIZE = 1024;
 
-void init(void)
+void uart_init(void)
 {
     const uart_config_t uart_config = {
         .baud_rate = 115200,
@@ -30,7 +30,7 @@ void tx_task()
 {
     static const char *TX_TASK_TAG = "TX_TASK";
     esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
-    sendData(TX_TASK_TAG, "1");
+    sendData(TX_TASK_TAG, "camera");
 }
 
 char *rx_task()

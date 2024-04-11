@@ -153,25 +153,29 @@ void pn532_example(void *)
             {
                 ESP_LOGI(LTAG, "Jewel Tag Detected!");
 
+                char uid_string[26];
+                uid_string[0] = '\0';
                 printf("Received UID: ");
-                for (int i = 10; i < sizeof(uid); i++)
-                {
+                for (int i = 10; i < sizeof(uid); i++) {
                     printf("%02X ", uid[i]);
+                    sprintf(uid_string + strlen(uid_string), "%02X ", uid[i]);
                 }
                 printf("\n");
+                mqtt_publish_message("topic", uid_string);
 
                 tx_task();
-                char *received_data;
+
+                char* received_data;
                 received_data = rx_task();
                 if (received_data != NULL)
                 {
                     printf("Received data: %s\n", received_data);
                     mqtt_publish_message("topic", received_data);
-                    // free(received_data);
+                    free(received_data);
                 }
                 else
                 {
-                    printf("No data received or error occurred.\n");
+                    printf("No data received!\n");
                 }
 
                 response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND * 10);
