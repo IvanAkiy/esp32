@@ -27,11 +27,14 @@ static const char *TAG = "Camera:";
 
 
 #define BUF_SIZE (128)
+volatile bool suspend_processing_task = false;
+const char *special_message = "camera";
 
-int sended = 0;
 
-#define IMG_WIDTH 400
-#define IMG_HEIGHT 296
+#define LED_GPIO_PIN 4 // Define the LED pin on ESP32 AI Thinker module
+
+#define IMG_WIDTH 240
+#define IMG_HEIGHT 240
 
 #define CAM_PIN_PWDN 32
 #define CAM_PIN_RESET -1
@@ -76,15 +79,22 @@ static camera_config_t camera_config = {
     .ledc_channel = LEDC_CHANNEL_0,
 
     .pixel_format = PIXFORMAT_RGB565, //YUV422,GRAYSCALE,RGB565,JPEG
-    .frame_size = FRAMESIZE_CIF,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
+    .frame_size = FRAMESIZE_240X240,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
-    .jpeg_quality = 5, //0-63 lower number means higher quality
-    .fb_count = 2       //if more than one, i2s runs in continuous mode. Use only with JPEG
-
+    .jpeg_quality = 7, //0-63 lower number means higher quality
+    .fb_count = 1,       //if more than one, i2s runs in continuous mode. Use only with JPEG
+    .grab_mode = CAMERA_GRAB_LATEST
 };
 
-TaskHandle_t processing_task_handle;
+TaskHandle_t processing_task_handle = NULL;
+static int count = 0;
+QueueHandle_t processing_queue;
 
+void print_uint8_ascii(uint8_t *data, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        ESP_LOGI(TAG, "%c", data[i]);
+    }
+}
 
 static uint8_t rgb565_to_grayscale(const uint8_t *img);
 static void rgb565_to_grayscale_buf(const uint8_t *src, uint8_t *dst, int qr_width, int qr_height);
@@ -92,9 +102,9 @@ static void processing_task(void *arg);
 static void main_task(void *arg);
 static esp_err_t init_camera();
 
-
 void app_main(void)
 {
+    gpio_set_direction(LED_GPIO_PIN, GPIO_MODE_OUTPUT); // Set the LED pin as an output
     xTaskCreatePinnedToCore(&main_task, "main", 4096, NULL, 5, NULL, 0);
 }
 
@@ -119,26 +129,43 @@ static void main_task(void *arg)
 
 #if CONFIG_UART_ISR_IN_IRAM 
     intr_alloc_flags = ESP_INTR_FLAG_IRAM; 
-#endif 
+#endif
+
 
     init_camera();
     
     // The queue for passing camera frames to the processing task
-    QueueHandle_t processing_queue = xQueueCreate(1, sizeof(camera_fb_t *));
+    processing_queue = xQueueCreate(1, sizeof(camera_fb_t *));
     assert(processing_queue);
     camera_fb_t *pic;
 
     // The main loop waiting for rx messages, and decoding qr code
+    
     while(1){
-        // checking for the message from rx
+        gpio_set_level(LED_GPIO_PIN, 0); // Turn off the LED
         uint8_t *data = (uint8_t *) malloc(BUF_SIZE); 
-        int len = uart_read_bytes(ECHO_UART_PORT_NUM, data,  (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
-        if (len > 0) {
-            // uart_flush(ECHO_UART_PORT_NUM);
-            // The processing task will be running QR code detection and recognition
-            xTaskCreatePinnedToCore(&processing_task, "processing", 35000, processing_queue, 1, &processing_task_handle, 0);
-            ESP_LOGI(TAG, "Processing task started");
 
+        // checking for the message from rx
+        int len = uart_read_bytes(ECHO_UART_PORT_NUM, data,  (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
+        // if (len > 0) {
+        if(strstr((char *)data, special_message) != NULL){
+            // ESP_LOGI(TAG, "After reading from rx");
+            // print_uint8_ascii(data, BUF_SIZE);
+            if (count == 0)
+            {
+                int task_created = xTaskCreate(&processing_task, "processing", 35000, processing_queue, tskIDLE_PRIORITY, &processing_task_handle);
+                if (task_created != pdPASS)
+                {   
+                    ESP_LOGI(TAG, "Failed to create task!");
+                }
+                count++;
+            } else
+            {
+                vTaskResume(processing_task_handle);
+            }
+            
+            ESP_LOGI(TAG, "Processing task started");
+            // ESP_LOGI(TAG, "len %d", len);
             // loop to get frames from the camera
             while (1) {
 
@@ -149,15 +176,39 @@ static void main_task(void *arg)
                 }
 
                 int res = xQueueSend(processing_queue, &pic, pdMS_TO_TICKS(10));
+
                 if (res == pdFAIL) {
                     esp_camera_fb_return(pic);
                 }
-                if(sended == 1) {
-                    sended = 0;
-                    break;
-                }
+
+                if(suspend_processing_task) {
+                    gpio_set_level(LED_GPIO_PIN, 1); // Turn on the LED
+                    esp_camera_fb_return(pic);
+                    suspend_processing_task = false;
+                    len = 0;   
+                    vTaskSuspend(processing_task_handle);
+                    BaseType_t reset_processing_queue = xQueueReset(processing_queue);
+                    if (reset_processing_queue == pdPASS)
+                    {
+                        ESP_LOGI(TAG, "Processing_queue reset successful");
+                        // Check if the queue is empty
+                        UBaseType_t items_waiting = uxQueueMessagesWaiting(processing_queue);
+
+                        if (items_waiting == 0) {
+                            ESP_LOGI(TAG, "Processing_queue is empty after reset");
+                        } else {
+                            ESP_LOGI(TAG, "Processing_queue is not empty after reset, items waiting: %u", items_waiting);
+                        }
+
+                    }else{
+                        ESP_LOGE(TAG, "Processing_queue reset failed");
+                    }
+                        break;
+                    }
             }
         }
+        free(data);
+        uart_flush_input(ECHO_UART_PORT_NUM);
     }
 }
 
@@ -177,54 +228,71 @@ static void processing_task(void *arg)
     QueueHandle_t input_queue = (QueueHandle_t) arg;
 
     ESP_LOGI(TAG, "Processing task ready");
-    while (true) {
-        // if (xQueueReceive(message_queue, data, portMAX_DELAY) == pdPASS) {
-            uint8_t *qr_buf = quirc_begin(qr, NULL, NULL);
+    
+    while (1) {
+        uint8_t *qr_buf = quirc_begin(qr, NULL, NULL);
 
-            // Get the next frame from the queue
-            int res = xQueueReceive(input_queue, &pic, portMAX_DELAY);
-            assert(res == pdPASS);
+        // Get the next frame from the queue
+        int res = xQueueReceive(input_queue, &pic, portMAX_DELAY);
+        assert(res == pdPASS);
 
-            int64_t t_start = esp_timer_get_time();
-            // Convert the frame to grayscale. We could have asked the camera for a grayscale frame,
-            rgb565_to_grayscale_buf(pic->buf, qr_buf, pic->width, pic->height);
+        int64_t t_start = esp_timer_get_time();
+        // Convert the frame to grayscale. We could have asked the camera for a grayscale frame,
+        rgb565_to_grayscale_buf(pic->buf, qr_buf, pic->width, pic->height);
 
-            // Return the frame buffer to the camera driver ASAP to avoid DMA errors
-            esp_camera_fb_return(pic);
+        // Return the frame buffer to the camera driver ASAP to avoid DMA errors
+        esp_camera_fb_return(pic);
 
-            // Process the frame. This step find the corners of the QR code (capstones)
-            quirc_end(qr);
-            int64_t t_end_find = esp_timer_get_time();
-            int count = quirc_count(qr);
-            quirc_decode_error_t err = QUIRC_ERROR_DATA_UNDERFLOW;
-            int time_find_ms = (int)(t_end_find - t_start) / 1000;
-            ESP_LOGI(TAG, "QR count: %d   Heap: %d  Stack free: %d  time: %d ms",
-                     count, heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
-                     uxTaskGetStackHighWaterMark(NULL), time_find_ms);
+
+        // Process the frame. This step find the corners of the QR code (capstones)
+        quirc_end(qr);
+        int64_t t_end_find = esp_timer_get_time();
+        int count = quirc_count(qr);
+        quirc_decode_error_t err = QUIRC_ERROR_DATA_UNDERFLOW;
+        int time_find_ms = (int)(t_end_find - t_start) / 1000;
+        ESP_LOGI(TAG, "QR count: %d   Heap: %d  Stack free: %d  time: %d ms",
+                 count, heap_caps_get_free_size(MALLOC_CAP_DEFAULT),
+                 uxTaskGetStackHighWaterMark(NULL), time_find_ms);
             
-            // If a QR code was detected, try to decode it:
-            for (int i = 0; i < count; i++) {
-                struct quirc_code code = {};
-                struct quirc_data qr_data = {};
-                // Extract raw QR code binary data (values of black/white modules)
-                quirc_extract(qr, i, &code);
+        // If a QR code was detected, try to decode it:
+        for (int i = 0; i < count; i++) {
+            struct quirc_code code = {};
+            struct quirc_data qr_data = {};
+            // Extract raw QR code binary data (values of black/white modules)
+            quirc_extract(qr, i, &code);
 
-                // Decode the raw data. This step also performs error correction.
-                err = quirc_decode(&code, &qr_data);
-                int64_t t_end = esp_timer_get_time();
-                int time_decode_ms = (int)(t_end - t_end_find) / 1000;
-                ESP_LOGI(TAG, "Decoded in %d ms", time_decode_ms);
-                if (err != 0) {
-                    ESP_LOGE(TAG, "QR err: %d", err);
-                } else {
-                        ESP_LOGI(TAG, "QR Data: %s bytes: '%d'", qr_data.payload, qr_data.payload_len);
-                        int some = uart_write_bytes(ECHO_UART_PORT_NUM, (const char *)qr_data.payload, qr_data.payload_len);
-                        sended = 1;
-                    }
+
+            // Decode the raw data. This step also performs error correction.
+            err = quirc_decode(&code, &qr_data);
+            int64_t t_end = esp_timer_get_time();
+            int time_decode_ms = (int)(t_end - t_end_find) / 1000;
+            ESP_LOGI(TAG, "Decoded in %d ms", time_decode_ms);
+            if (err != 0) {
+                ESP_LOGE(TAG, "QR err: %s", quirc_strerror(err));
+            } else {
+                ESP_LOGI(TAG, "QR Data: %s bytes: '%d'", qr_data.payload, qr_data.payload_len);
+                char uart_buffer[BUF_SIZE];
+                memcpy(uart_buffer, qr_data.payload, qr_data.payload_len);
+                int some = uart_write_bytes(ECHO_UART_PORT_NUM, uart_buffer, qr_data.payload_len);
+                suspend_processing_task = true;
+                // memset(qr_data.payload, 0, qr_data.payload_len);
+                // vTaskDelay(pdMS_TO_TICKS(500));
+                // Clear the camera frame queue
+
+                for (int i = 0; i < uxQueueMessagesWaiting(input_queue); i++)
+                {
+                    xQueueReceive(input_queue, &pic, portMAX_DELAY);
+                    esp_camera_fb_return(pic);
                 }
-                if(sended == 1) {
-                    vTaskDelete(processing_task_handle);
-                }
+                ESP_LOGI(TAG, "Input_queue reset successful");
+    
+                memset(uart_buffer, 0, sizeof(uart_buffer));
+                memset(qr_buf, 0, qr_width * qr_height);
+                pic = NULL;
+            }
+        }
+        // vTaskDelay(pdMS_TO_TICKS(100)); // Adjust the delay as needed
+
     }
 }
 
