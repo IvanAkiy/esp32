@@ -46,7 +46,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(MQTT_TAG, "MQTT_EVENT_DISCONNECTED");
         break;
-
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(MQTT_TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
         msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
@@ -143,25 +142,23 @@ void mqtt_initialize(void)
                 .uri = "mqtt://192.168.4.1",
             },
             .verification = {
-                .skip_cert_common_name_check = true, // Set to true if you want to skip CN check
+                .skip_cert_common_name_check = true,
             },
         },
-        // TODO
-        .session = {
-            .keepalive = 80, // Specify the keep-alive time in seconds
-        },
         .network = {
-            .reconnect_timeout_ms = 3000, // Specify the reconnect timeout in milliseconds
-            .timeout_ms = 10000,          // Specify the network operation timeout in milliseconds
+            .reconnect_timeout_ms = 100,
+            // .refresh_connection_after_ms = 10000,
+            // .timeout_ms = 10000,
         },
-        .task = {
-            .priority = 5,     // Specify the MQTT task priority
-            .stack_size = 8192 // Specify the MQTT task stack size
+        .session = {
+            .disable_clean_session = false,
+            .keepalive = INT_MAX,
+            .disable_keepalive = false,
         },
-        .buffer = {
-            .size = 1024,    // Specify the MQTT send/receive buffer size
-            .out_size = 1024 // Specify the MQTT output buffer size (if needed)
-        },
+        // .task = {
+        //     .priority = 5,     // Specify the MQTT task priority
+        //     .stack_size = 8192 // Specify the MQTT task stack size
+        // },
     };
 
     client = esp_mqtt_client_init(&mqtt_cfg);

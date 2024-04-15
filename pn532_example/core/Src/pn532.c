@@ -1,4 +1,5 @@
 #include "pn532.h"
+// #include <driver/i2c_master.h>
 
 static const char LTAG[] = "PN_532";
 
@@ -27,6 +28,7 @@ void pn532_example(void *)
 {
     i2c_master_init();
     esp_err_t response;
+
     uint8_t wake_up_command[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00};
     while (1)
     {
@@ -46,11 +48,7 @@ void pn532_example(void *)
             ESP_LOGI(LTAG, "Driver not installed or not in master mode %s", esp_err_to_name(response)); 
         }else if (response == ESP_ERR_TIMEOUT)
         {
-            ESP_LOGI(LTAG, "Operation timeout because the bus is busy %s", esp_err_to_name(response)); 
-        }else
-        {
-            ESP_LOGE(LTAG, "Error waking up: %s", esp_err_to_name(response));
-            
+            ESP_LOGI(LTAG, "Operation timeout because the bus is busy %s", esp_err_to_name(response));
         }
     }
 
@@ -216,6 +214,6 @@ void pn532_example(void *)
             ESP_LOGE(LTAG, "Error reading UID!\n");
         }
 
-        vTaskDelay(pdHALF_SECOND);
+        vTaskDelay(250 / portTICK_PERIOD_MS);
     }
 }
