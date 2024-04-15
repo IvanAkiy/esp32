@@ -27,18 +27,33 @@ void pn532_example(void *)
 {
     i2c_master_init();
     esp_err_t response;
-
     uint8_t wake_up_command[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00};
-    response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, wake_up_command, sizeof(wake_up_command), pdSECOND * 10);
-    if (response == ESP_OK)
+    while (1)
     {
-        ESP_LOGI(LTAG, "PN532 Wake Up Successfully!");
+        response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, wake_up_command, sizeof(wake_up_command), pdSECOND * 10);
+        if (response == ESP_OK)
+        {
+            ESP_LOGI(LTAG, "PN532 Wake Up Successfully!");
+            break;
+        }else if (response == ESP_ERR_INVALID_ARG)
+        {
+            ESP_LOGI(LTAG, "Parameter error %s", esp_err_to_name(response));
+        }else if (response == ESP_FAIL)
+        {
+            ESP_LOGI(LTAG, "Sending command error, slave hasn't ACK the transfer %s", esp_err_to_name(response));
+        }else if (response == ESP_ERR_INVALID_STATE)
+        {
+            ESP_LOGI(LTAG, "Driver not installed or not in master mode %s", esp_err_to_name(response)); 
+        }else if (response == ESP_ERR_TIMEOUT)
+        {
+            ESP_LOGI(LTAG, "Operation timeout because the bus is busy %s", esp_err_to_name(response)); 
+        }else
+        {
+            ESP_LOGE(LTAG, "Error waking up: %s", esp_err_to_name(response));
+            
+        }
     }
-    else
-    {
-        ESP_LOGE(LTAG, "Error waking up: %s", esp_err_to_name(response));
-        return;
-    }
+
 
     for (int i = 0; i < 3; i++)
     {
@@ -170,7 +185,17 @@ void pn532_example(void *)
                 if (received_data != NULL)
                 {
                     printf("Received data: %s\n", received_data);
-                    mqtt_publish_message("topic", received_data);
+                    size_t len =  strlen("UID: ") + strlen(uid_string) + sizeof('\n') + strlen("QR:\n") + strlen(received_data);
+                    char* concatenated_data = (char*)malloc(len * sizeof(char));
+                    strcpy(concatenated_data, "UID: ");
+                    strcat(concatenated_data, uid_string);
+                    strcat(concatenated_data, "\n");
+                    strcat(concatenated_data, "\n");
+                    strcat(concatenated_data, "QR:\n");
+                    strcat(concatenated_data, received_data);
+                    printf("%s\n", concatenated_data);
+                    mqtt_publish_message("topic", concatenated_data);
+                    free(concatenated_data);
                     free(received_data);
                 }
                 else

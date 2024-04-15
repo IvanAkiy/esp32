@@ -12,10 +12,11 @@
 #define I2C_MASTER_SCL_IO 18
 #define I2C_MASTER_SDA_IO 17
 #define I2C_MASTER_NUM I2C_NUM_0
-#define I2C_MASTER_FREQ_HZ 1000
+#define I2C_MASTER_FREQ_HZ 10000
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
 #define PN532_I2C_ADDRESS (0x48 >> 1)
+
 
 void pn532_example(void*);
 
