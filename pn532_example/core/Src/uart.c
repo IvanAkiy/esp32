@@ -49,6 +49,7 @@ char *rx_task()
         }
         else
         {
+            free(data);
             return NULL;
         }
     }
