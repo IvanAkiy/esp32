@@ -12,6 +12,7 @@
 #define TXD_PIN (GPIO_NUM_11)
 #define RXD_PIN (GPIO_NUM_12)
 
+
 void uart_init(void);
 void tx_task();
 char* rx_task();
