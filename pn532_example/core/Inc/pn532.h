@@ -18,8 +18,6 @@
 #define I2C_MASTER_RX_BUF_DISABLE 0
 #define PN532_I2C_ADDRESS (0x48 >> 1)
 
-
-void pn532_example(void*);
-
+void pn532_example(void *);
 
 #endif // PN532_H
