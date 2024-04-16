@@ -1,5 +1,5 @@
-idf_component_register(SRCS
-                    INCLUDE_DIRS "."
+idf_component_register(SRCS "main.c"
+                    INCLUDE_DIRS "../"
                     PRIV_REQUIRES esp_timer vfs)
 
 # target_compile_options(${COMPONENT_LIB} PRIVATE -O3)

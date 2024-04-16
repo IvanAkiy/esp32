@@ -15,6 +15,7 @@
 #include "driver/gpio.h"
 #include <string.h>
 
+
 static const char *TAG = "Camera:";
 
 #define ECHO_TEST_TXD (GPIO_NUM_1)
@@ -33,7 +34,7 @@ const char *special_message = "camera";
 
 #define LED_GPIO_PIN 4 // Define the LED pin on ESP32 AI Thinker module
 
-#define IMG_WIDTH 240
+#define IMG_WIDTH 320
 #define IMG_HEIGHT 240
 
 #define CAM_PIN_PWDN 32
@@ -79,9 +80,9 @@ static camera_config_t camera_config = {
     .ledc_channel = LEDC_CHANNEL_0,
 
     .pixel_format = PIXFORMAT_RGB565, //YUV422,GRAYSCALE,RGB565,JPEG
-    .frame_size = FRAMESIZE_240X240,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
+    .frame_size = FRAMESIZE_QVGA,    //QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
-    .jpeg_quality = 7, //0-63 lower number means higher quality
+    .jpeg_quality = 4, //0-63 lower number means higher quality
     .fb_count = 1,       //if more than one, i2s runs in continuous mode. Use only with JPEG
     .grab_mode = CAMERA_GRAB_LATEST
 };
@@ -90,67 +91,38 @@ TaskHandle_t processing_task_handle = NULL;
 static int count = 0;
 QueueHandle_t processing_queue;
 
-void print_uint8_ascii(uint8_t *data, size_t length) {
-    for (size_t i = 0; i < length; i++) {
-        ESP_LOGI(TAG, "%c", data[i]);
-    }
-}
-
-static uint8_t rgb565_to_grayscale(const uint8_t *img);
 static void rgb565_to_grayscale_buf(const uint8_t *src, uint8_t *dst, int qr_width, int qr_height);
 static void processing_task(void *arg);
 static void main_task(void *arg);
 static esp_err_t init_camera();
+void init_uart();
 
 void app_main(void)
 {
+    init_uart();
+    init_camera();
     gpio_set_direction(LED_GPIO_PIN, GPIO_MODE_OUTPUT); // Set the LED pin as an output
     xTaskCreatePinnedToCore(&main_task, "main", 4096, NULL, 5, NULL, 0);
 }
 
 static void main_task(void *arg)
 {
-    //Initializing the uart communication
-    uart_config_t uart_config = {
-        .baud_rate = ECHO_UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-
-    int intr_alloc_flags = 0; 
-
-    
-    ESP_ERROR_CHECK(uart_driver_install(ECHO_UART_PORT_NUM, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags)); 
-    ESP_ERROR_CHECK(uart_param_config(ECHO_UART_PORT_NUM, &uart_config)); 
-    ESP_ERROR_CHECK(uart_set_pin(ECHO_UART_PORT_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS));
-
-#if CONFIG_UART_ISR_IN_IRAM 
-    intr_alloc_flags = ESP_INTR_FLAG_IRAM; 
-#endif
-
-
-    init_camera();
-    
     // The queue for passing camera frames to the processing task
     processing_queue = xQueueCreate(1, sizeof(camera_fb_t *));
     assert(processing_queue);
     camera_fb_t *pic;
 
     // The main loop waiting for rx messages, and decoding qr code
-    
     while(1){
+        uart_flush_input(ECHO_UART_PORT_NUM);
+        
         gpio_set_level(LED_GPIO_PIN, 0); // Turn off the LED
-        uint8_t *data = (uint8_t *) malloc(BUF_SIZE); 
 
+        uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
         // checking for the message from rx
         int len = uart_read_bytes(ECHO_UART_PORT_NUM, data,  (BUF_SIZE - 1), 20 / portTICK_PERIOD_MS);
-        // if (len > 0) {
         if(strstr((char *)data, special_message) != NULL){
-            // ESP_LOGI(TAG, "After reading from rx");
-            // print_uint8_ascii(data, BUF_SIZE);
+            //Creating task or Resume the task
             if (count == 0)
             {
                 int task_created = xTaskCreate(&processing_task, "processing", 35000, processing_queue, tskIDLE_PRIORITY, &processing_task_handle);
@@ -165,18 +137,16 @@ static void main_task(void *arg)
             }
             
             ESP_LOGI(TAG, "Processing task started");
-            // ESP_LOGI(TAG, "len %d", len);
-            // loop to get frames from the camera
-            while (1) {
 
+            // Loop to get frames from the camera
+            while (1) {
                 pic = esp_camera_fb_get();
                 if (pic == NULL) {
                     ESP_LOGE(TAG, "Get frame failed");
                     continue;
                 }
-
+                // Sending frame to the procesing task queue
                 int res = xQueueSend(processing_queue, &pic, pdMS_TO_TICKS(10));
-
                 if (res == pdFAIL) {
                     esp_camera_fb_return(pic);
                 }
@@ -187,28 +157,11 @@ static void main_task(void *arg)
                     suspend_processing_task = false;
                     len = 0;   
                     vTaskSuspend(processing_task_handle);
-                    BaseType_t reset_processing_queue = xQueueReset(processing_queue);
-                    if (reset_processing_queue == pdPASS)
-                    {
-                        ESP_LOGI(TAG, "Processing_queue reset successful");
-                        // Check if the queue is empty
-                        UBaseType_t items_waiting = uxQueueMessagesWaiting(processing_queue);
-
-                        if (items_waiting == 0) {
-                            ESP_LOGI(TAG, "Processing_queue is empty after reset");
-                        } else {
-                            ESP_LOGI(TAG, "Processing_queue is not empty after reset, items waiting: %u", items_waiting);
-                        }
-
-                    }else{
-                        ESP_LOGE(TAG, "Processing_queue reset failed");
-                    }
-                        break;
-                    }
+                    break;
+                }
             }
         }
-        free(data);
-        uart_flush_input(ECHO_UART_PORT_NUM);
+    free(data);
     }
 }
 
@@ -220,7 +173,7 @@ static void processing_task(void *arg)
 
     int qr_width = IMG_WIDTH;
     int qr_height = IMG_HEIGHT;
-        camera_fb_t *pic;
+    camera_fb_t *pic;
     if (quirc_resize(qr, qr_width, qr_height) < 0) {
         ESP_LOGE(TAG, "Failed to allocate QR buffer");
         return;
@@ -260,8 +213,6 @@ static void processing_task(void *arg)
             struct quirc_data qr_data = {};
             // Extract raw QR code binary data (values of black/white modules)
             quirc_extract(qr, i, &code);
-
-
             // Decode the raw data. This step also performs error correction.
             err = quirc_decode(&code, &qr_data);
             int64_t t_end = esp_timer_get_time();
@@ -275,8 +226,7 @@ static void processing_task(void *arg)
                 memcpy(uart_buffer, qr_data.payload, qr_data.payload_len);
                 int some = uart_write_bytes(ECHO_UART_PORT_NUM, uart_buffer, qr_data.payload_len);
                 suspend_processing_task = true;
-                // memset(qr_data.payload, 0, qr_data.payload_len);
-                // vTaskDelay(pdMS_TO_TICKS(500));
+
                 // Clear the camera frame queue
 
                 for (int i = 0; i < uxQueueMessagesWaiting(input_queue); i++)
@@ -291,37 +241,28 @@ static void processing_task(void *arg)
                 pic = NULL;
             }
         }
-        // vTaskDelay(pdMS_TO_TICKS(100)); // Adjust the delay as needed
 
     }
-}
-
-// Helper functions to convert an RGB565 image to grayscale
-typedef union {
-    uint16_t val;
-    struct {
-        uint16_t b: 5;
-        uint16_t g: 6;
-        uint16_t r: 5;
-    };
-} rgb565_t;
-
-static uint8_t rgb565_to_grayscale(const uint8_t *img)
-{
-    uint16_t *img_16 = (uint16_t *) img;
-    rgb565_t rgb = {.val = __builtin_bswap16(*img_16)};
-    uint16_t val = (rgb.r * 8 + rgb.g * 4 + rgb.b * 8) / 3;
-    return (uint8_t) MIN(255, val);
 }
 
 static void rgb565_to_grayscale_buf(const uint8_t *src, uint8_t *dst, int qr_width, int qr_height)
 {
     for (size_t y = 0; y < qr_height; y++) {
         for (size_t x = 0; x < qr_width; x++) {
-            dst[y * qr_width + x] = rgb565_to_grayscale(&src[(y * qr_width + x) * 2]);
+            uint16_t *pixel = (uint16_t *)&src[(y * qr_width + x) * 2];
+            uint16_t rgb565 = __builtin_bswap16(*pixel);
+
+            // Extract RGB components
+            uint16_t r = (rgb565 >> 11) & 0x1F;
+            uint16_t g = (rgb565 >> 5) & 0x3F;
+            uint16_t b = rgb565 & 0x1F;
+
+            // Convert to grayscale
+            dst[y * qr_width + x] = (r * 8 + g * 4 + b * 8) / 3;
         }
     }
 }
+
 
 static esp_err_t init_camera()
 {
@@ -333,4 +274,26 @@ static esp_err_t init_camera()
         return err;
     }
     return ESP_OK;
+}
+
+void init_uart(){
+    //Initializing the uart communication
+    uart_config_t uart_config = {
+        .baud_rate = ECHO_UART_BAUD_RATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    int intr_alloc_flags = 0; 
+
+    uart_driver_install(ECHO_UART_PORT_NUM, BUF_SIZE * 2, 0, 0, NULL, intr_alloc_flags);
+    uart_param_config(ECHO_UART_PORT_NUM, &uart_config);
+    uart_set_pin(ECHO_UART_PORT_NUM, ECHO_TEST_TXD, ECHO_TEST_RXD, ECHO_TEST_RTS, ECHO_TEST_CTS);
+
+    #if CONFIG_UART_ISR_IN_IRAM 
+        intr_alloc_flags = ESP_INTR_FLAG_IRAM; 
+    #endif
 }
