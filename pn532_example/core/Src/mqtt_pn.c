@@ -4,7 +4,7 @@ const char MQTT_TAG[] = "MQTT";
 
 const char *ssid = "rpi-qr-rfid";
 const char *pass = "rpi-qr-rfid";
-int retry_num = 0;
+// const char *topic = "topic";
 
 static esp_mqtt_client_handle_t client;
 
@@ -86,17 +86,18 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
     }
     else if (event_id == WIFI_EVENT_STA_CONNECTED)
     {
-        ESP_LOGI(MQTT_TAG, "WiFi CONNECTED\n");
+        ESP_LOGI(MQTT_TAG, "WiFi CONNECTED!\n");
     }
     else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         ESP_LOGI(MQTT_TAG, "WiFi lost connection\n");
-        if (retry_num < 5)
-        {
+        // retry = true;
+        // if (retry == true)
+        // {
             esp_wifi_connect();
-            retry_num++;
+            // retry_num++;
             printf("Retrying to Connect...\n");
-        }
+        // }
     }
     else if (event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -106,7 +107,6 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
 
 void wifi_connection()
 {
-    // 2 - Wi-Fi Configuration Phase
     esp_netif_init();
     esp_event_loop_create_default();
     esp_netif_create_default_wifi_sta();
@@ -146,7 +146,7 @@ void mqtt_initialize(void)
             },
         },
         .network = {
-            .reconnect_timeout_ms = 100,
+            .reconnect_timeout_ms = 50,
             // .refresh_connection_after_ms = 10000,
             // .timeout_ms = 10000,
         },
@@ -155,10 +155,10 @@ void mqtt_initialize(void)
             .keepalive = INT_MAX,
             .disable_keepalive = false,
         },
-        // .task = {
-        //     .priority = 5,     // Specify the MQTT task priority
-        //     .stack_size = 8192 // Specify the MQTT task stack size
-        // },
+        .task = {
+            .priority = 5,
+            .stack_size = 8192,
+        },
     };
 
     client = esp_mqtt_client_init(&mqtt_cfg);
