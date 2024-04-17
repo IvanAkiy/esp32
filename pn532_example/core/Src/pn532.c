@@ -235,7 +235,7 @@ void pn532_example(void *)
             ESP_LOGE(LTAG, "Error reading UID!\n");
         }
 
-        vTaskDelay(pdQUARTER_SECOND);
+        vTaskDelay(pdScanTimeout);
 
     }
 }
