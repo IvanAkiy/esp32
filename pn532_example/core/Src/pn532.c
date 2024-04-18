@@ -24,120 +24,118 @@ static esp_err_t i2c_master_init(void)
 }
 
 
-void pn532_example(void *)
+static esp_err_t pn532_wake_up()
 {
-    i2c_master_init();
     esp_err_t response;
-
     uint8_t wake_up_command[] = {0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0xFD, 0xD4, 0x14, 0x01, 0x17, 0x00};
-    while (1)
+    response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, wake_up_command, sizeof(wake_up_command), pdSECOND * 10);
+    if (response == ESP_OK)
     {
-        response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, wake_up_command, sizeof(wake_up_command), pdSECOND * 10);
-        if (response == ESP_OK)
-        {
-            ESP_LOGI(LTAG, "PN532 Wake Up Successfully!");
-            int res = gpio_get_level(I2C_MASTER_SCL_IO);
-            if (res == 1)
-            {
-                ESP_LOGI(LTAG, " SLI input level is 1"); 
-            }else{
-                ESP_LOGI(LTAG, " SLI input level is 0"); 
-            }
+        ESP_LOGI(LTAG, "PN532 Wake Up Successfully!");
 
-            int res1 = gpio_get_level(I2C_MASTER_SDA_IO);
-            if (res == 1)
-            {
-                ESP_LOGI(LTAG, " SDA input level is 1"); 
-            }else{
-                ESP_LOGI(LTAG, " SDA input level is 0"); 
-            }
-            break;
-        }else if (response == ESP_ERR_INVALID_ARG)
+        for (int i = 0; i < 3; i++)
         {
-            ESP_LOGI(LTAG, "Parameter error %s", esp_err_to_name(response));
-        }else if (response == ESP_FAIL)
-        {
-            ESP_LOGI(LTAG, "Sending command error, slave hasn't ACK the transfer %s", esp_err_to_name(response));
-        }else if (response == ESP_ERR_INVALID_STATE)
-        {
-            ESP_LOGI(LTAG, "Driver not installed or not in master mode %s", esp_err_to_name(response)); 
-        }else if (response == ESP_ERR_TIMEOUT)
-        {
-            ESP_LOGI(LTAG, "Operation timeout because the bus is busy %s", esp_err_to_name(response)); 
-
-        }else
-        {
-            ESP_LOGE(LTAG, "Error waking up: %s", esp_err_to_name(response));
-            
-            ESP_LOGI(LTAG, "Operation timeout because the bus is busy %s", esp_err_to_name(response));
-
-        }
-    }
-
-
-    for (int i = 0; i < 3; i++)
-    {
-        uint8_t uid[15];
-        response = i2c_master_read_from_device(I2C_MASTER_NUM,
+            uint8_t uid[15];
+            response = i2c_master_read_from_device(I2C_MASTER_NUM,
                                                PN532_I2C_ADDRESS,
                                                uid,
                                                sizeof(uid),
                                                pdSECOND);
 
-        if (response == ESP_OK)
-        {
-            printf("Received Command: ");
-            for (int i = 0; i < sizeof(uid); i++)
+            if (response == ESP_OK)
             {
-                printf("%02X ", uid[i]);
+                printf("Received Command: ");
+                for (int i = 0; i < sizeof(uid); i++)
+                {
+                    printf("%02X ", uid[i]);
+                }
+                printf("\n");
             }
-            printf("\n");
-        }
-        else
-        {
-            ESP_LOGE(LTAG, "Error reading UID\n");
+            else
+            {
+                ESP_LOGE(LTAG, "Error reading UID\n");
+                return response;
+            }
+            vTaskDelay(pdHALF_SECOND);
         }
 
-        vTaskDelay(pdHALF_SECOND);
+        return response;
+
+    }else
+    {
+        ESP_LOGE(LTAG, "Error waking up: %s", esp_err_to_name(response));
+        return response;
     }
 
+}
+
+static esp_err_t pn532_rf_config()
+{
+    esp_err_t response;
     uint8_t rf_config_command[] = {0x00, 0x00, 0xFF, 0x06, 0xFA, 0xD4, 0x32, 0x05, 0xFF, 0xFF, 0x02, 0xF5, 0x00};
     response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, rf_config_command, sizeof(rf_config_command), pdSECOND * 10);
     if (response == ESP_OK)
     {
         ESP_LOGI(LTAG, "RF Config Command Sent Successfully!");
-    }
-    else
-    {
-        ESP_LOGE(LTAG, "Error sending RF Config command: %s", esp_err_to_name(response));
-        return;
-    }
-
-    for (int i = 0; i < 3; i++)
-    {
-        uint8_t uid[15];
-        response = i2c_master_read_from_device(I2C_MASTER_NUM,
+        for (int i = 0; i < 3; i++)
+        {
+            uint8_t uid[15];
+            response = i2c_master_read_from_device(I2C_MASTER_NUM,
                                                PN532_I2C_ADDRESS,
                                                uid,
                                                sizeof(uid),
                                                pdSECOND);
 
-        if (response == ESP_OK)
-        {
-            printf("Received Command: ");
-            for (int i = 0; i < sizeof(uid); i++)
+            if (response == ESP_OK)
             {
-                printf("%02X ", uid[i]);
+                printf("Received Command: ");
+                for (int i = 0; i < sizeof(uid); i++)
+                {
+                    printf("%02X ", uid[i]);
+                }
+                printf("\n");
             }
-            printf("\n");
-        }
-        else
-        {
-            ESP_LOGE(LTAG, "Error reading UID\n");
+            else
+            {
+                ESP_LOGE(LTAG, "Error reading UID\n");
+                return response;
+            }
+            vTaskDelay(pdHALF_SECOND);
         }
 
-        vTaskDelay(pdHALF_SECOND);
+        return response;
+
+    }else
+    {
+        ESP_LOGE(LTAG, "Error sending RF Config command: %s", esp_err_to_name(response));
+        return response;
     }
+
+}
+
+
+void pn532_example(void *)
+{
+    i2c_master_init();
+    esp_err_t response;
+    uint8_t uid[22];
+
+    while (1)
+    {
+        response = pn532_wake_up();
+        if (response == ESP_OK)
+        {
+            while (1)
+            {
+                response = pn532_rf_config();
+                if (response == ESP_OK)
+                {
+                    break;
+                }
+            }
+            break;
+        }
+    }    
 
     uint8_t in_list_passive_target_command[] = {0x00, 0x00, 0xFF, 0x04, 0xFC, 0xD4, 0x4A, 0x01, 0x00, 0xE1, 0x00};
     response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND * 10);
@@ -150,10 +148,9 @@ void pn532_example(void *)
         ESP_LOGE(LTAG, "Error sending In List Passive Target command: %s", esp_err_to_name(response));
         return;
     }
-
+        
     while (1)
     {
-        uint8_t uid[22];
         response = i2c_master_read_from_device(I2C_MASTER_NUM,
                                                PN532_I2C_ADDRESS,
                                                uid,
@@ -233,6 +230,23 @@ void pn532_example(void *)
         else
         {
             ESP_LOGE(LTAG, "Error reading UID!\n");
+            while (1)
+            {
+                response = pn532_wake_up();
+                if (response == ESP_OK)
+                {
+                    while (1)
+                    {
+                        response = pn532_rf_config();
+                        if (response == ESP_OK)
+                        {
+                            break;
+                        }
+                    }   
+                    break;
+                }
+            }   
+            response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND * 10);
         }
 
         vTaskDelay(pdScanTimeout);
