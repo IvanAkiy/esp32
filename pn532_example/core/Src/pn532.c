@@ -23,7 +23,6 @@ static esp_err_t i2c_master_init(void)
                               I2C_MASTER_TX_BUF_DISABLE, 0);
 }
 
-
 static esp_err_t pn532_wake_up()
 {
     esp_err_t response;
@@ -113,12 +112,8 @@ static esp_err_t pn532_rf_config()
 
 }
 
-
-void pn532_example(void *)
-{
-    i2c_master_init();
+void configuring_pn532() {
     esp_err_t response;
-    uint8_t uid[22];
 
     while (1)
     {
@@ -135,7 +130,16 @@ void pn532_example(void *)
             }
             break;
         }
-    }    
+    }
+}
+
+void pn532_example(void *)
+{
+    i2c_master_init();
+    esp_err_t response;
+    uint8_t uid[22];
+    
+    configuring_pn532();
 
     uint8_t in_list_passive_target_command[] = {0x00, 0x00, 0xFF, 0x04, 0xFC, 0xD4, 0x4A, 0x01, 0x00, 0xE1, 0x00};
     response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND * 10);
@@ -230,22 +234,8 @@ void pn532_example(void *)
         else
         {
             ESP_LOGE(LTAG, "Error reading UID!\n");
-            while (1)
-            {
-                response = pn532_wake_up();
-                if (response == ESP_OK)
-                {
-                    while (1)
-                    {
-                        response = pn532_rf_config();
-                        if (response == ESP_OK)
-                        {
-                            break;
-                        }
-                    }   
-                    break;
-                }
-            }   
+
+            configuring_pn532();   
             response = i2c_master_write_to_device(I2C_MASTER_NUM, PN532_I2C_ADDRESS, in_list_passive_target_command, sizeof(in_list_passive_target_command), pdSECOND * 10);
         }
 
