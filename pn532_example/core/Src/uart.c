@@ -31,6 +31,7 @@ int sendData(const char *data)
 void tx_task()
 {
     esp_log_level_set(UART_TAG, ESP_LOG_INFO);
+    uart_flush(UART_NUM_1);
     sendData("camera");
 }
 
@@ -41,9 +42,7 @@ char *rx_task()
     uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
     while (1)
     {
-        int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 350 / portTICK_PERIOD_MS);
-        uart_flush(UART_NUM_1);
-
+        int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 450 / portTICK_PERIOD_MS);
         if (rxBytes > 0)
         {
             data[rxBytes] = '\0';

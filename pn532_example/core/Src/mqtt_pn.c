@@ -150,7 +150,7 @@ void mqtt_initialize(void)
             },
         },
         .network = {
-            .reconnect_timeout_ms = 100,
+            .reconnect_timeout_ms = 250,
         },
         .session = {
             .last_will = {
@@ -158,7 +158,6 @@ void mqtt_initialize(void)
                 .msg = "My last transmission. Farewell, let our connections endure...",
                 .msg_len = 61,
                 .qos = 1,
-                .retain = 1,
             },
             .keepalive = INT_MAX,
         },

@@ -202,6 +202,7 @@ void pn532_example(void *)
 
                 char* received_data;
                 received_data = rx_task();
+                ESP_LOGI(LTAG, "Received data from camera!");
                 if (received_data != NULL)
                 {
                     printf("Received data: %s\n", received_data);
