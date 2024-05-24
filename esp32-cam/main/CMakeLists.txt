@@ -1,6 +1,8 @@
 idf_component_register(SRCS "main.c"
                     INCLUDE_DIRS "../"
-                    PRIV_REQUIRES esp_timer vfs)
+                    PRIV_REQUIRES esp_timer vfs
+                                    sdmmc
+                                    fatfs)
 
 # target_compile_options(${COMPONENT_LIB} PRIVATE -O3)
 
