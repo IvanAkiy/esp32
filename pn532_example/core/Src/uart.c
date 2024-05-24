@@ -42,7 +42,28 @@ char *rx_task()
     uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
     while (1)
     {
-        int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 450 / portTICK_PERIOD_MS);
+        int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 550 / portTICK_PERIOD_MS);
+        if (rxBytes > 0)
+        {
+            data[rxBytes] = '\0';
+            return (char *)data;
+        }
+        else
+        {
+            free(data);
+            return NULL;
+        }
+    }
+}
+
+char *rx_task_for_delete()
+{
+    esp_log_level_set(UART_TAG, ESP_LOG_INFO);
+
+    uint8_t *data = (uint8_t *)malloc(RX_BUF_SIZE + 1);
+    while (1)
+    {
+        int rxBytes = uart_read_bytes(UART_NUM_1, data, RX_BUF_SIZE, 50 / portTICK_PERIOD_MS);
         if (rxBytes > 0)
         {
             data[rxBytes] = '\0';

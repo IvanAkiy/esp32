@@ -9,7 +9,8 @@ static esp_mqtt_client_handle_t client;
 
 void mqtt_publish_message(const char *topic, const char *message)
 {
-    int result = esp_mqtt_client_publish(client, topic, message, 0, 1, 0);
+    int len = strlen(message);
+    int result = esp_mqtt_client_publish(client, topic, message, len, 1, 0);
 
     if (result < 0)
     {
@@ -119,6 +120,7 @@ void wifi_connection()
     esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL);
     esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL);
 
+
     wifi_config_t wifi_configuration = {
         .sta = {
             .ssid = "",
@@ -153,12 +155,6 @@ void mqtt_initialize(void)
             .reconnect_timeout_ms = 250,
         },
         .session = {
-            .last_will = {
-                .topic = "topic",
-                .msg = "My last transmission. Farewell, let our connections endure...",
-                .msg_len = 61,
-                .qos = 1,
-            },
             .keepalive = INT_MAX,
         },
     };

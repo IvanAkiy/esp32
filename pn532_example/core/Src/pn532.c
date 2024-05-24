@@ -201,24 +201,58 @@ void pn532_example(void *)
                 tx_task();
 
                 char* received_data;
+                vTaskDelay(pdTX_TASK);
                 received_data = rx_task();
                 ESP_LOGI(LTAG, "Received data from camera!");
                 if (received_data != NULL)
                 {
+                    // Find the first occurrence of '*'
+                    char* star_pos = strchr(received_data, '*');
+                    if (star_pos != NULL)
+                    {
+                        // Null-terminate the string at the position of '*'
+                        *star_pos = '\0';
+                    }
+
                     printf("Received data: %s\n", received_data);
-                    size_t len =  strlen("UID: ") + strlen(uid_string) + sizeof('\n') + strlen("QR:\n") + strlen(received_data);
-                    char* concatenated_data = (char*)malloc(len * sizeof(char));
-                    strcpy(concatenated_data, "UID: ");
-                    strcat(concatenated_data, uid_string);
-                    strcat(concatenated_data, "\n");
-                    strcat(concatenated_data, "\n");
-                    strcat(concatenated_data, "QR:\n");
-                    strcat(concatenated_data, received_data);
-                    printf("%s\n", concatenated_data);
-                    mqtt_publish_message("topic", concatenated_data);
-                    free(concatenated_data);
+
+                    // Find the first occurrence of ':'
+                    char* colon_pos = strchr(received_data, ':');
+                    if (colon_pos != NULL)
+                    {
+                        // Move the pointer to the character after ':'
+                        colon_pos++;
+                        // Skip any leading whitespace after ':'
+                        while (*colon_pos == ' ' || *colon_pos == '\t')
+                        {
+                            colon_pos++;
+                        }
+
+                        // Now colon_pos points to the part of the string after the colon
+                        char* actual_data = colon_pos;
+
+                        // Process the actual_data as needed
+                        size_t len = strlen("UID: ") + strlen(uid_string) + sizeof('\n') + strlen("QR:\n") + strlen(actual_data);
+                        char* concatenated_data = (char*)malloc((len + 1) * sizeof(char)); // +1 for the null terminator
+                        if (concatenated_data == NULL)
+                        {
+                            // Handle memory allocation failure
+                            ESP_LOGE(LTAG, "Failed to allocate memory");
+                            free(received_data);
+                            return;
+                        }
+                        strcpy(concatenated_data, "UID: ");
+                        strcat(concatenated_data, uid_string);
+                        strcat(concatenated_data, "\n\n");
+                        strcat(concatenated_data, "QR:\n");
+                        strcat(concatenated_data, actual_data);
+                        printf("%s\n", concatenated_data);
+                        mqtt_publish_message("topic", concatenated_data);
+                        free(concatenated_data);
+                    }
                     free(received_data);
                 }
+
                 else
                 {
                     printf("No data received!\n");

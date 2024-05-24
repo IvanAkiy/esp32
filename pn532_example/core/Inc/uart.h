@@ -15,5 +15,6 @@
 void uart_init(void);
 void tx_task();
 char *rx_task();
+char *rx_task_for_delete();
 
 #endif

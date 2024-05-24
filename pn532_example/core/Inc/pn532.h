@@ -9,6 +9,9 @@
 #define pdSECOND pdMS_TO_TICKS(1000)
 #define pdHALF_SECOND pdMS_TO_TICKS(500)
 #define pdScanTimeout pdMS_TO_TICKS(50)
+#define pdTX_TASK pdMS_TO_TICKS(370)
+#define pdTX_TASK_2 pdMS_TO_TICKS(100)
+
 
 #define I2C_MASTER_SCL_IO 18
 #define I2C_MASTER_SDA_IO 17
