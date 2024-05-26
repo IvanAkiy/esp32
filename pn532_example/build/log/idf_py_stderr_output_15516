@@ -1,9 +1,0 @@
-[0;33m--- WARNING: GDB cannot open serial ports accessed as COMx[0m
-[0;33m--- Using \\.\COM6 instead...[0m
-[0;33m--- esp-idf-monitor 1.4.0 on \\.\COM6 115200 ---[0m
-[0;33m--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H ---[0m
-[0;33m0x4037538c: cache_ll_l1_enable_bus at C:/Users/romanchekk/esp/v5.2/esp-idf/components/hal/esp32s3/include/hal/cache_ll.h:579
- (inlined by) do_multicore_settings at C:/Users/romanchekk/esp/v5.2/esp-idf/components/esp_system/port/cpu_start.c:341
-[0m
-[0;33mWarning: checksum mismatch between flashed and built applications. Checksum of built application is 13ad21c46485658503bcf4441af97b1756ac961bace297fe49d3bcfb937eb707[0m
-[0m
